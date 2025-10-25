@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор QR-кода для сайта кандидата</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+            font-weight: 600;
+        }
+
+        .url-input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        input[type="url"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .qr-container {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            display: none;
+        }
+
+        .qr-code {
+            margin: 20px 0;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .instructions h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .example-url {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Генератор QR-кода</h1>
+        <p style="color: #666; margin-bottom: 30px;">Создайте QR-код для вашего сайта кандидата</p>
+        
+        <div class="url-input-section">
+            <label for="website-url">Введите URL вашего сайта:</label>
+            <input type="url" id="website-url" placeholder="https://ваш-username.github.io/имя-репозитория/" />
+            <div class="example-url">
+                Пример: https://username.github.io/candidate-website/
+            </div>
+        </div>
+
+        <button class="generate-btn" onclick="generateQR()">Сгенерировать QR-код</button>
+        
+        <div class="error" id="error-message"></div>
+
+        <div class="qr-container" id="qr-container">
+            <h3>Ваш QR-код готов!</h3>
+            <div class="qr-code" id="qrcode"></div>
+            <div>
+                <button class="download-btn" onclick="downloadQR('png')">Скачать PNG</button>
+                <button class="download-btn" onclick="downloadQR('jpg')">Скачать JPG</button>
+                <button class="download-btn" onclick="downloadQR('svg')">Скачать SVG</button>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Инструкции по использованию:</h3>
+            <ol>
+                <li>Разместите ваш сайт на GitHub Pages (см. файл DEPLOY_INSTRUCTIONS.md)</li>
+                <li>Введите полученный URL в поле выше</li>
+                <li>Нажмите "Сгенерировать QR-код"</li>
+                <li>Скачайте QR-код в нужном формате</li>
+                <li>Распечатайте QR-код и разместите на агитационных материалах</li>
+                <li>При сканировании QR-кода откроется ваш сайт</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <script>
+        let currentQRCode = null;
+
+        function generateQR() {
+            const urlInput = document.getElementById('website-url');
+            const qrContainer = document.getElementById('qr-container');
+            const errorMessage = document.getElementById('error-message');
+            const qrCodeDiv = document.getElementById('qrcode');
+            
+            const url = urlInput.value.trim();
+            
+            // Очистка предыдущих сообщений
+            errorMessage.style.display = 'none';
+            
+            // Валидация URL
+            if (!url) {
+                showError('Пожалуйста, введите URL сайта');
+                return;
+            }
+            
+            if (!isValidUrl(url)) {
+                showError('Пожалуйста, введите корректный URL (начинающийся с http:// или https://)');
+                return;
+            }
+            
+            // Очистка предыдущего QR-кода
+            qrCodeDiv.innerHTML = '';
+            
+            try {
+                // Генерация QR-кода
+                QRCode.toCanvas(qrCodeDiv, url, {
+                    width: 300,
+                    height: 300,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    },
+                    margin: 2,
+                    errorCorrectionLevel: 'M'
+                }, function (error) {
+                    if (error) {
+                        showError('Ошибка при генерации QR-кода: ' + error.message);
+                    } else {
+                        qrContainer.style.display = 'block';
+                        currentQRCode = url;
+                    }
+                });
+                
+            } catch (error) {
+                showError('Ошибка при генерации QR-кода: ' + error.message);
+            }
+        }
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function showError(message) {
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function downloadQR(format) {
+            if (!currentQRCode) {
+                showError('Сначала сгенерируйте QR-код');
+                return;
+            }
+            
+            const canvas = document.querySelector('#qrcode canvas');
+            if (!canvas) {
+                showError('QR-код не найден');
+                return;
+            }
+            
+            try {
+                let mimeType, extension;
+                switch(format) {
+                    case 'png':
+                        mimeType = 'image/png';
+                        extension = 'png';
+                        break;
+                    case 'jpg':
+                        mimeType = 'image/jpeg';
+                        extension = 'jpg';
+                        break;
+                    case 'svg':
+                        // Для SVG используем другую функцию
+                        QRCode.toString(currentQRCode, { type: 'svg' }, function (err, string) {
+                            if (err) throw err;
+                            downloadSVG(string);
+                        });
+                        return;
+                    default:
+                        throw new Error('Неподдерживаемый формат');
+                }
+                
+                // Создание ссылки для скачивания
+                const link = document.createElement('a');
+                link.download = `qr-code-candidate.${extension}`;
+                link.href = canvas.toDataURL(mimeType);
+                link.click();
+                
+            } catch (error) {
+                showError('Ошибка при скачивании: ' + error.message);
+            }
+        }
+
+        function downloadSVG(svgString) {
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'qr-code-candidate.svg';
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Автоматическая генерация при нажатии Enter
+        document.getElementById('website-url').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateQR();
+            }
+        });
+    </script>
+</body>
+</html>
